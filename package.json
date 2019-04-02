@@ -8,7 +8,8 @@
   "license": "MIT",
   "private": false,
   "dependencies": {
-    "barrkeep": "^2.0.0"
+    "barrkeep": "^2.0.0",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "eslint": "^5.16.0"
