@@ -13,10 +13,12 @@
     "uuid": "^3.3.2"
   },
   "devDependencies": {
-    "eslint": "^5.16.0"
+    "eslint": "^5.16.0",
+    "jest": "^24.7.1"
   },
   "scripts": {
-    "lint": "eslint index.js lib/*.js lib/**/*.js",
-    "start": "node index.js"
+    "lint": "eslint index.js src/*.js src/**/*.js",
+    "start": "node index.js",
+    "test": "jest"
   }
 }
