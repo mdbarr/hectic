@@ -1,0 +1,7 @@
+{
+  "id": "a1e179a0-5fc2-11e9-b3de-cff6f3e780d3",
+  "object": "area",
+  "name": "The Darkness",
+  "description": "A formless abyss.",
+  "rooms": [ "bba16a50" ]
+}

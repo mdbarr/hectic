@@ -1,0 +1,8 @@
+{
+  "id": "f8efc9c8-5fc1-11e9-b37b-d7745c0fad46",
+  "object": "region",
+  "name": "The Abyss",
+  "description": "A formless abyss.",
+  "climate": null,
+  "areas": [ "a1e179a0" ]
+}
