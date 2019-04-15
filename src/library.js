@@ -7,24 +7,43 @@ const async = require('async');
 const DEFAULT = 'DEFAULT';
 const DEFAULT_PATH = path.resolve(path.join(__dirname, '/../library'));
 
-function Library() {
+function Library(hectic) {
   const self = this;
 
   //////////
 
-  this.library = {
+  const library = {
     collection: {},
     count: 0,
     ids: {},
     short: {}
   };
 
-  this.instances = {
+  const instances = {
     collection: {},
     count: 0,
     ids: {},
     short: {}
   };
+
+  Object.defineProperty(String.prototype, '$resolve', {
+    value() {
+      if (this) {
+        if (instances.short[this]) {
+          return instances.short[this];
+        } else if (instances.ids[this]) {
+          return instances.ids[this];
+        } else if (library.short[this]) {
+          return library.short[this];
+        } else if (library.ids[this]) {
+          return library.ids[this];
+        }
+      }
+      return undefined;
+    },
+    enumerable: false,
+    configurable: true
+  });
 
   //////////
 
@@ -33,16 +52,16 @@ function Library() {
       const object = require(file);
       const type = object.type;
       const id = object.id;
-      const short = id.substring(0, 12);
+      const short = id.substring(0, hectic.config['short-id-length']);
 
-      if (!Array.isArray(self.library.collection[type])) {
-        self.library.collection[type] = [];
+      if (!Array.isArray(library.collection[type])) {
+        library.collection[type] = [];
       }
 
-      self.library.collection[type].push(object);
-      self.library.ids[id] = object;
-      self.library.short[short] = object;
-      self.library.count++;
+      library.collection[type].push(object);
+      library.ids[id] = object;
+      library.short[short] = object;
+      library.count++;
 
       return callback(null, id);
     } catch (error) {

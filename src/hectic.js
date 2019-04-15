@@ -2,7 +2,10 @@
 
 require('barrkeep/shim');
 
-const defaults = {};
+const defaults = {
+  'short-id-length': 8,
+  port: 4000
+};
 
 function Hectic(config = {}) {
   const self = this;
