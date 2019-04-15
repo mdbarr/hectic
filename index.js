@@ -3,4 +3,11 @@
 const Hectic = require('./src/hectic');
 
 const hectic = new Hectic();
-hectic.boot();
+
+hectic.library.load((error) => {
+  if (error) {
+    throw error;
+  }
+
+  hectic.boot();
+});

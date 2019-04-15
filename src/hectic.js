@@ -22,6 +22,9 @@ function Hectic(config = {}) {
 
   self.types = require('./types');
 
+  // Library
+  self.library = require('./library')(self);
+
   //////////
   // Boot
 
