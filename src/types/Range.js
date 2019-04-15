@@ -3,9 +3,12 @@
 module.exports = function(hectic) {
   class Range {
     constructor(minimum, maximum, average) {
-      this.minimum = minimum;
-      this.maximum = maximum;
-      this.average = average;
+      Object.assign(this, {
+        object: 'range',
+        minimum,
+        maximum,
+        average
+      });
     }
   }
 
