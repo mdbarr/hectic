@@ -50,7 +50,7 @@ function Library(hectic) {
   function loader(file, callback) {
     try {
       const object = require(file);
-      const type = object.type;
+      const type = object.object;
       const id = object.id;
       const short = id.substring(0, hectic.config['short-id-length']);
 

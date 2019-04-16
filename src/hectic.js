@@ -23,7 +23,7 @@ function Hectic(config = {}) {
   //////////
   // Class Loader
 
-  self.types = require('./types');
+  self.types = require('./types')(self);
 
   // Library
   self.library = require('./library')(self);
