@@ -9,5 +9,7 @@ hectic.library.load((error) => {
     throw error;
   }
 
-  hectic.boot();
+  hectic.boot(() => {
+    console.log('Hectic Engine');
+  });
 });

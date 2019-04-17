@@ -24,6 +24,10 @@ function Telnet(hectic) {
       callback();
     });
   };
+
+  self.shutdown = function(callback) {
+    return self.server.close(callback);
+  };
 }
 
 module.exports = function(hectic) {

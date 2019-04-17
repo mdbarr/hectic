@@ -33,10 +33,15 @@ function Hectic(config = {}) {
 
   //////////
 
-  self.boot = () => {
+  self.boot = (callback) => {
     self.telnet.boot(() => {
       console.log('Ready for connnections');
+      callback();
     });
+  };
+
+  self.shutdown = (callback) => {
+    self.telnet.shutdown(callback);
   };
 
   //////////
