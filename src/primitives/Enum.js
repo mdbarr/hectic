@@ -6,24 +6,24 @@ module.exports = function() {
       const map = {};
 
       for (let i = 0; i < values.length; i++) {
-        const key = values[i].camelize();
+        const key = values[i].toString().$camelize();
 
         const buffer = Buffer.alloc(4);
-        buffer.writeUInt32(Math.pow(2, i));
+        buffer.writeUInt32LE(Math.pow(2, i));
 
         map[key] = buffer;
       }
 
       return new Proxy(this, {
         get(object, property) {
-          const key = (property || '').camelize();
+          const key = (property || '').$camelize();
           if (map[key]) {
-            return map[key].readUInt32();
+            return map[key].readUInt32LE();
           }
           return 0;
         },
         set(object, property, value) {
-          const key = (property || '').camelize();
+          const key = (property || '').$camelize();
           if (map[key]) {
             throw new Error('Enum values cannot be changed');
           } else {
