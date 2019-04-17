@@ -81,5 +81,5 @@ module.exports = function(hectic) {
     }
   }
 
-  hectic.types.register('Collection', Collection);
+  return Collection;
 };

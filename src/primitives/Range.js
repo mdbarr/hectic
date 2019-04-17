@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function(hectic) {
+module.exports = function() {
   class Range {
     constructor(minimum, maximum, average) {
       Object.assign(this, {
@@ -12,5 +12,5 @@ module.exports = function(hectic) {
     }
   }
 
-  hectic.types.register('Range', Range);
+  return Range;
 };

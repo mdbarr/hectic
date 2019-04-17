@@ -19,7 +19,10 @@ function Hectic(config = {}) {
   // Utility Modules
   self.utils = require('./utils')(self);
 
-  // Type definition
+  // Primitive defintions
+  self.primitives = require('./primitives')(self);
+
+  // Type definitions
   self.types = require('./types')(self);
 
   // Library loader

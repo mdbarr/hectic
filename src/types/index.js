@@ -22,10 +22,6 @@ module.exports = function(hectic) {
   };
 
   const dependencies = [
-    // Utility Types (no inheritance)
-    'Collection',
-    'Range',
-    // Primary Types
     'Event',
     'Emitter',
     'Monad',
