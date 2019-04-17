@@ -13,6 +13,9 @@ function Hectic(config = {}) {
   // Configuration
   self.config = Object.$merge(defaults, config, true);
 
+  // Constants
+  self.constants = require('./constants');
+
   // Utility Modules
   self.utils = require('./utils')(self);
 
