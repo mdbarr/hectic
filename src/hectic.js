@@ -13,14 +13,14 @@ function Hectic(config = {}) {
   // Configuration
   self.config = Object.$merge(defaults, config, true);
 
-  // Constants
-  self.constants = require('./constants');
-
   // Utility Modules
   self.utils = require('./utils')(self);
 
   // Primitive defintions
   self.primitives = require('./primitives')(self);
+
+  // Constants
+  self.constants = require('./constants')(self);
 
   // Type definitions
   self.types = require('./types')(self);
