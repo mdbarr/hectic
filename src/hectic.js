@@ -4,7 +4,13 @@ require('barrkeep/shim');
 
 const defaults = {
   'short-id-length': 8,
-  port: 4444
+  port: 4444,
+  game: {
+    clock: null,
+    plugins: [],
+    start: 'bba16a50',
+    worlds: [ 'cd66d230', 'af205132' ]]
+  }
 };
 
 function Hectic(config = {}) {
@@ -30,6 +36,9 @@ function Hectic(config = {}) {
 
   // Telnet server
   self.telnet = require('./telnet')(self);
+
+  // Game engine
+  self.game = require('./game')(self);
 
   //////////
 
