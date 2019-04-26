@@ -9,6 +9,8 @@ hectic.library.load((error) => {
     throw error;
   }
 
+  hectic.game.create();
+
   hectic.boot(() => {
     console.log('Hectic Engine');
   });

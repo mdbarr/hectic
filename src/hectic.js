@@ -6,10 +6,10 @@ const defaults = {
   'short-id-length': 8,
   port: 4444,
   game: {
-    clock: null,
+    clock: undefined,
     plugins: [],
     start: 'bba16a50',
-    worlds: [ 'cd66d230', 'af205132' ]]
+    worlds: [ 'cd66d230', 'af205132' ]
   }
 };
 

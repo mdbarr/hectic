@@ -10,6 +10,11 @@ function Game(hectic) {
 
   self.worlds = hectic.config.game.worlds;
 
+  self.create = function() {
+    for (const world of self.worlds) {
+      hectic.types.create(world.$resolve);
+    }
+  };
 
   return this;
 }

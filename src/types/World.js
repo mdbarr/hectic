@@ -13,6 +13,10 @@ module.exports = function(hectic) {
         description: options.description || 'Undescribed World',
         regions: options.regions || {}
       });
+
+      for (const region of this.regions) {
+        hectic.types.create(region.$resolve);
+      }
     }
   }
 

@@ -15,6 +15,10 @@ module.exports = function(hectic) {
         weather: options.weather || null,
         areas: options.areas || {}
       });
+
+      for (const area of this.areas) {
+        hectic.types.create(area.$resolve);
+      }
     }
   }
 

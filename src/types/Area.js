@@ -14,6 +14,10 @@ module.exports = function(hectic) {
         region: options.region || null,
         rooms: options.rooms || {}
       });
+
+      for (const room of this.rooms) {
+        hectic.types.create(room.$resolve);
+      }
     }
   }
 

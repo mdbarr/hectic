@@ -27,7 +27,7 @@ function Library(hectic) {
   };
 
   Object.defineProperty(String.prototype, '$resolve', {
-    value() {
+    get () {
       if (this) {
         if (instances.short[this]) {
           return instances.short[this];
@@ -62,11 +62,12 @@ function Library(hectic) {
       library.ids[id] = object;
       library.short[short] = object;
       library.count++;
-
-      return callback(null, id);
     } catch (error) {
+      console.log(error);
       return callback(error);
     }
+
+    return callback();
   }
 
   self.load = function(libraryPath = DEFAULT, callback = null) {

@@ -15,6 +15,7 @@ module.exports = function(hectic) {
   hectic.types.create = function(item) {
     const object = item.object;
     if (lookup[object]) {
+      console.log(`[${ item.id.substring(0, 8) }] [${ item.object }] ${ item.name }`);
       const Constructor = lookup[object];
       return new Constructor(item);
     }
