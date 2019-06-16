@@ -9,10 +9,10 @@
   "private": false,
   "dependencies": {
     "async": "^3.0.1",
-    "barrkeep": "^2.0.1",
+    "barrkeep": "^2.0.2",
     "glob": "^7.1.4",
     "uuid": "^3.3.2",
-    "xstate": "^4.6.0"
+    "xstate": "^4.6.1"
   },
   "devDependencies": {
     "eslint": "^5.16.0",
