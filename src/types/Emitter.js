@@ -43,9 +43,7 @@ module.exports = function(hectic) {
         }
       }
 
-      async.applyEach(callbacks, event, () => {
-        console.log('done', event.$handled);
-      });
+      return async.map(Array.from(callbacks), (handler, next) => { handler(data, next); });
     }
 
     $on(pattern, callback) {
