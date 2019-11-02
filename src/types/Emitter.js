@@ -46,18 +46,23 @@ module.exports = function(hectic) {
       return async.map(Array.from(callbacks), (handler, next) => { handler(data, next); });
     }
 
-    $on(pattern, callback) {
+    $on(pattern, ...args) {
+      const callback = args.pop();
+      const condition = args.pop();
+
       const [ key, regExp ] = this.$parsePattern(pattern);
 
       if (!this.$listeners[key]) {
         this.$listeners[key] = {
           pattern: key,
           regExp,
-          listerners: new Set()
+          listerners: new Set(),
+          conditions: new Map()
         };
       }
 
       this.$listeners[key].listeners.add(callback);
+      this.$listeners[key].conditions.set(callback, condition);
     }
 
     $off(pattern, callback) {
