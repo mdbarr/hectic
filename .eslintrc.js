@@ -4,7 +4,7 @@ module.exports = {
     'ecmaVersion': 9,
     'sourceType': 'script'
   },
-  env: { node: true },
+  env: { es6: true, node: true },
   rules: {
     'accessor-pairs': 'error',
     'array-bracket-spacing': [ 'error', 'always' ],
