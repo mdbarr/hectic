@@ -1,3 +1,5 @@
+/* eslint-disable */
+'use strict';
 /**
  * Telnet server implementation.
  *
@@ -8,19 +10,14 @@
  *
  */
 
-/**
- * Modules
- */
-
 const net = require('net');
 const assert = require('assert');
 const EventEmitter = require('events').EventEmitter;
 const Stream = require('stream').Stream;
 const util = require('util');
 
-/**
- * Constants
- */
+//////////
+// Constants
 
 const COMMANDS = {
   SE: 240, // end of subnegotiation parameters
@@ -41,11 +38,11 @@ const COMMANDS = {
   IAC: 255, // interpret as command
 };
 
-const COMMAND_NAMES = Object.keys(COMMANDS).reduce((out, key) => {
+const COMMAND_NAMES = {};
+for (const key in COMMANDS) {
   const value = COMMANDS[key];
-  out[value] = key.toLowerCase();
-  return out;
-}, {});
+  COMMAND_NAMES[value] = key.toLowerCase();
+}
 
 const OPTIONS = {
   TRANSMIT_BINARY: 0, // http://tools.ietf.org/html/rfc856
@@ -116,11 +113,11 @@ const OPTIONS = {
   EXOPL: 255, // http://tools.ietf.org/html/rfc861
 };
 
-const OPTION_NAMES = Object.keys(OPTIONS).reduce((out, key) => {
+const OPTION_NAMES = {};
+for (const key in OPTIONS) {
   const value = OPTIONS[key];
-  out[value] = key.toLowerCase();
-  return out;
-}, {});
+  OPTION_NAMES[value] = key.toLowerCase();
+}
 
 const SUB = {
   IS: 0,
@@ -132,9 +129,8 @@ const SUB = {
   USER_VARIABLE: 3,
 };
 
-/**
- * Client
- */
+//////////
+// Client
 
 function Client (options) {
   const self = this;
