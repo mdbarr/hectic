@@ -3,7 +3,7 @@
 const telnet = require('./telnet');
 
 function Server () {
-  this.server = telnet.createServer((client) => {
+  this.server = new telnet.Server((client) => {
     client.on('window size', (event) => {
       if (event.command === 'sb') {
         console.log('telnet window resized to %d x %d', event.width, event.height);

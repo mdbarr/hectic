@@ -1,8 +1,6 @@
 'use strict';
 
-const {
-  uuid, merge,
-} = require('./utils');
+const { uuid, merge } = require('./utils');
 
 // mixins, objects, npc
 function Room ({
@@ -140,29 +138,29 @@ function Room ({
   };
 
   // character leaving
-  this.beforeLeave = () => { return true; };
+  this.beforeLeave = () => true;
   this.onLeave = () => { };
-  this.afterLeave = () => { return true; };
+  this.afterLeave = () => true;
 
-  this.beforePlace = () => { return true; };
+  this.beforePlace = () => true;
   this.onPlace = () => { };
-  this.afterPlace = () => { return true; };
+  this.afterPlace = () => true;
 
-  this.beforeTake = () => { return true; };
+  this.beforeTake = () => true;
   this.onTake = () => { };
-  this.afterTake = () => { return true; };
+  this.afterTake = () => true;
 
-  this.beforeLook = () => { return true; };
+  this.beforeLook = () => true;
   this.onLook = () => { };
-  this.afterLook = () => { return true; };
+  this.afterLook = () => true;
 
-  this.beforeLookAt = () => { return true; };
+  this.beforeLookAt = () => true;
   this.onLookAt = () => { };
-  this.afterLookAt = () => { return true; };
+  this.afterLookAt = () => true;
 
-  this.beforeCommand = () => { return true; };
-  this.onCommand = () => { return true; };
-  this.afterCommand = () => { return true; };
+  this.beforeCommand = () => true;
+  this.onCommand = () => true;
+  this.afterCommand = () => true;
 }
 
 module.exports = { Room };

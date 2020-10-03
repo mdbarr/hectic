@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable camelcase */
 'use strict';
 /**
  * Telnet server implementation.
@@ -132,695 +132,645 @@ const SUB = {
 //////////
 // Client
 
-function Client (options) {
-  const self = this;
+class Client extends Stream {
+  constructor (options, ...args) {
+    super();
 
-  if (!(this instanceof Client)) {
-    return new Client(arguments[0], arguments[1], arguments[2]);
-  }
-
-  Stream.call(this);
-
-  if (options.addListener) {
-    options = {
-      input: arguments[0],
-      output: arguments[1],
-      server: arguments[2],
-    };
-  }
-
-  if (options.socket) {
-    options.input = options.socket;
-    options.output = options.socket;
-  }
-
-  if (!options.output) {
-    options.output = options.input;
-    options.socket = options.input;
-  }
-
-  this.input = options.input;
-  this.output = options.output;
-  this.socket = options.socket;
-  this.server = options.server;
-  this.env = {};
-  this.terminal = 'ansi';
-
-  this.options = options;
-  this.options.convertLF = options.convertLF !== false;
-
-  if (this.options.tty) {
-    this.setRawMode = this._setRawMode;
-    this.isTTY = true;
-    this.isRaw = false;
-    this.columns = 80;
-    this.rows = 24;
-  }
-
-  this.open();
-}
-
-Client.prototype.__proto__ = Stream.prototype;
-
-Client.prototype.debug = function() {
-  const args = Array.prototype.slice.call(arguments);
-  let msg;
-
-  if (!this.remoteAddress && this.input.remoteAddress) {
-    this.remoteAddress = this.input.remoteAddress;
-  }
-
-  args.push(`(${ this.remoteAddress })`);
-
-  if (this.listeners('debug').length) {
-    msg = util.format.apply(util.format, args);
-    this.emit('debug', msg);
-  }
-
-  if (this.server && this.server.listeners('debug').length) {
-    msg = util.format.apply(util.format, args);
-    this.server.emit('debug', msg);
-  }
-
-  if (this.options.debug) {
-    args.push(`(${ this.input.remoteAddress })`);
-    console.error(args);
-  }
-};
-
-Client.prototype.open = function() {
-  const self = this;
-
-  [ 'DO', 'DONT', 'WILL', 'WONT' ].forEach((commandName) => {
-    self[commandName.toLowerCase()] = {};
-    Object.keys(OPTIONS).forEach((optionName) => {
-      const optionCode = OPTIONS[optionName];
-      self[commandName.toLowerCase()][optionName.toLowerCase()] = function() {
-        const buf = new Buffer(3);
-        buf[0] = COMMANDS.IAC;
-        buf[1] = COMMANDS[commandName];
-        buf[2] = optionCode;
-        return self.output.write(buf);
+    if (options.addListener) {
+      options = {
+        input: options,
+        output: args[0],
+        server: args[1],
       };
+    }
+
+    if (options.socket) {
+      options.input = options.socket;
+      options.output = options.socket;
+    }
+
+    if (!options.output) {
+      options.output = options.input;
+      options.socket = options.input;
+    }
+
+    this.input = options.input;
+    this.output = options.output;
+    this.socket = options.socket;
+    this.server = options.server;
+    this.env = {};
+    this.terminal = 'ansi';
+
+    this.options = options;
+    this.options.convertLF = options.convertLF !== false;
+
+    if (this.options.tty) {
+      this.setRawMode = this._setRawMode;
+      this.isTTY = true;
+      this.isRaw = false;
+      this.columns = 80;
+      this.rows = 24;
+    }
+
+    this.open();
+  }
+
+  debug (...args) {
+    let msg;
+
+    if (!this.remoteAddress && this.input.remoteAddress) {
+      this.remoteAddress = this.input.remoteAddress;
+    }
+
+    args.push(`(${ this.remoteAddress })`);
+
+    if (this.listeners('debug').length) {
+      msg = util.format.apply(util.format, args);
+      this.emit('debug', msg);
+    }
+
+    if (this.server && this.server.listeners('debug').length) {
+      msg = util.format.apply(util.format, args);
+      this.server.emit('debug', msg);
+    }
+
+    if (this.options.debug) {
+      args.push(`(${ this.input.remoteAddress })`);
+      console.error(args);
+    }
+  }
+
+  open () {
+    for (const commandName of [ 'DO', 'DONT', 'WILL', 'WONT' ]) {
+      this[commandName.toLowerCase()] = {};
+      for (const optionName in OPTIONS) {
+        const optionCode = OPTIONS[optionName];
+        this[commandName.toLowerCase()][optionName.toLowerCase()] = function() {
+          const buf = Buffer.alloc(3);
+          buf[0] = COMMANDS.IAC;
+          buf[1] = COMMANDS[commandName];
+          buf[2] = optionCode;
+          return this.output.write(buf);
+        };
+      }
+
+      const cmd = commandName.toLowerCase();
+      this[cmd].window_size = this[cmd].naws;
+      this[cmd].environment_variables = this[cmd].new_environ;
+    }
+
+    this.input.on('end', () => {
+      this.debug('ended');
+      this.emit('end');
     });
-  });
 
-  // compat
-  [ 'DO', 'DONT', 'WILL', 'WONT' ].forEach((commandName) => {
-    const cmd = commandName.toLowerCase();
-    self[cmd].window_size = self[cmd].naws;
-    self[cmd].environment_variables = self[cmd].new_environ;
-  });
+    this.input.on('close', () => {
+      this.debug('closed');
+      this.emit('close');
+    });
 
-  this.input.on('end', () => {
-    self.debug('ended');
-    self.emit('end');
-  });
+    this.input.on('drain', () => {
+      this.emit('drain');
+    });
 
-  this.input.on('close', () => {
-    self.debug('closed');
-    self.emit('close');
-  });
+    this.input.on('error', (err) => {
+      this.debug('error: %s', err ? `${ err.message }` : 'Unknown');
+      this.emit('error', err);
+    });
 
-  this.input.on('drain', () => {
-    self.emit('drain');
-  });
+    this.input.on('data', (data) => {
+      this.parse(data);
+    });
 
-  this.input.on('error', (err) => {
-    self.debug('error: %s', err ? `${ err.message }` : 'Unknown');
-    self.emit('error', err);
-  });
-
-  this.input.on('data', (data) => {
-    self.parse(data);
-  });
-
-  if (this.options.tty) {
-    this.do.transmit_binary();
-    this.do.terminal_type();
-    this.do.naws();
-    this.do.new_environ();
-  }
-};
-
-Client.prototype.parse = function(data) {
-  const bufs = [];
-  let i = 0;
-  let l = 0;
-  let needsPush = false;
-  let cdata;
-  let iacCode;
-  let iacName;
-  let commandCode;
-  let commandName;
-  let optionCode;
-  let optionName;
-  let cmd;
-  let len;
-
-  if (this._last) {
-    data = Buffer.concat([ this._last.data, data ]);
-    i = this._last.i;
-    l = this._last.l;
-    delete this._last;
+    if (this.options.tty) {
+      this.do.transmit_binary();
+      this.do.terminal_type();
+      this.do.naws();
+      this.do.new_environ();
+    }
   }
 
-  for (; i < data.length; i++) {
-    if (data.length - 1 - i >= 2 &&
+  parse (data) {
+    const bufs = [];
+    let i = 0;
+    let l = 0;
+    let needsPush = false;
+    let cdata;
+    let iacCode;
+    let iacName;
+    let commandCode;
+    let commandName;
+    let optionCode;
+    let optionName;
+    let cmd;
+    let len;
+
+    if (this._last) {
+      data = Buffer.concat([ this._last.data, data ]);
+      i = this._last.i;
+      l = this._last.l;
+      delete this._last;
+    }
+
+    for (; i < data.length; i++) {
+      if (data.length - 1 - i >= 2 &&
         data[i] === COMMANDS.IAC &&
         COMMAND_NAMES[data[i + 1]] &&
         OPTION_NAMES[data[i + 2]]) {
-      cdata = data.slice(i);
+        cdata = data.slice(i);
 
-      iacCode = cdata.readUInt8(0);
-      iacName = COMMAND_NAMES[iacCode];
-      commandCode = cdata.readUInt8(1);
-      commandName = COMMAND_NAMES[commandCode];
-      optionCode = cdata.readUInt8(2);
-      optionName = OPTION_NAMES[optionCode];
+        iacCode = cdata.readUInt8(0);
+        iacName = COMMAND_NAMES[iacCode];
+        commandCode = cdata.readUInt8(1);
+        commandName = COMMAND_NAMES[commandCode];
+        optionCode = cdata.readUInt8(2);
+        optionName = OPTION_NAMES[optionCode];
 
-      cmd = {
-        command: commandName, // compat
-        option: optionName.replace(/_/g, ' '), // compat
-        iacCode,
-        iacName,
-        commandCode,
-        commandName,
-        optionCode,
-        optionName,
-        data: cdata,
-      };
+        cmd = {
+          command: commandName, // compat
+          option: optionName.replace(/_/g, ' '), // compat
+          iacCode,
+          iacName,
+          commandCode,
+          commandName,
+          optionCode,
+          optionName,
+          data: cdata,
+        };
 
-      // compat
-      if (cmd.option === 'new environ') {
-        cmd.option = 'environment variables';
-      } else if (cmd.option === 'naws') {
-        cmd.option = 'window size';
-      }
-
-      if (this[cmd.optionName]) {
-        try {
-          len = this[cmd.optionName](cmd);
-        } catch (e) {
-          if (!(e instanceof RangeError)) {
-            this.debug('error: %s', e.message);
-            this.emit('error', e);
-            return;
-          }
-          len = -1;
-          this.debug('Not enough data to parse.');
+        // compat
+        if (cmd.option === 'new environ') {
+          cmd.option = 'environment variables';
+        } else if (cmd.option === 'naws') {
+          cmd.option = 'window size';
         }
-      } else {
-        if (cmd.commandCode === COMMANDS.SB) {
-          len = 0;
-          while (cdata[len] && cdata[len] !== COMMANDS.SE) {
-            len++;
-          }
-          if (!cdata[len]) {
-            len = 3;
-          } else {
-            len++;
+
+        if (this[cmd.optionName]) {
+          try {
+            len = this[cmd.optionName](cmd);
+          } catch (e) {
+            if (!(e instanceof RangeError)) {
+              this.debug('error: %s', e.message);
+              this.emit('error', e);
+              return;
+            }
+            len = -1;
+            this.debug('Not enough data to parse.');
           }
         } else {
-          len = 3;
+          if (cmd.commandCode === COMMANDS.SB) {
+            len = 0;
+            while (cdata[len] && cdata[len] !== COMMANDS.SE) {
+              len++;
+            }
+            if (!cdata[len]) {
+              len = 3;
+            } else {
+              len++;
+            }
+          } else {
+            len = 3;
+          }
+          cmd.data = cmd.data.slice(0, len);
+          this.debug('Unknown option: %s', cmd.optionName);
         }
-        cmd.data = cmd.data.slice(0, len);
-        this.debug('Unknown option: %s', cmd.optionName);
-      }
 
-      if (len === -1) {
-        this.debug('Waiting for more data.');
+        if (len === -1) {
+          this.debug('Waiting for more data.');
+          this.debug(iacName, commandName, optionName, cmd.values || len);
+          this._last = {
+            data,
+            i,
+            l,
+          };
+          return;
+        }
+
         this.debug(iacName, commandName, optionName, cmd.values || len);
-        this._last = {
-          data,
-          i,
-          l,
-        };
-        return;
-      }
 
-      this.debug(iacName, commandName, optionName, cmd.values || len);
+        this.emit('command', cmd);
 
-      this.emit('command', cmd);
-
-      needsPush = true;
-      l = i + len;
-      i += len - 1;
-    } else {
-      if (data[i] === COMMANDS.IAC && data.length - 1 - i < 2) {
-        this.debug('Waiting for more data.');
-        this._last = {
-          data: data.slice(i),
-          i: 0,
-          l: 0,
-        };
-        if (i > l) {
-          this.emit('data', data.slice(l, i));
+        needsPush = true;
+        l = i + len;
+        i += len - 1;
+      } else {
+        if (data[i] === COMMANDS.IAC && data.length - 1 - i < 2) {
+          this.debug('Waiting for more data.');
+          this._last = {
+            data: data.slice(i),
+            i: 0,
+            l: 0,
+          };
+          if (i > l) {
+            this.emit('data', data.slice(l, i));
+          }
+          return;
         }
-        return;
+        if (needsPush || i === data.length - 1) {
+          bufs.push(data.slice(l, i + 1));
+          needsPush = false;
+        }
       }
-      if (needsPush || i === data.length - 1) {
-        bufs.push(data.slice(l, i + 1));
-        needsPush = false;
-      }
+    }
+
+    if (bufs.length) {
+      this.emit('data', Buffer.concat(bufs));
     }
   }
 
-  if (bufs.length) {
-    this.emit('data', Buffer.concat(bufs));
-  }
-};
-
-Client.prototype.echo = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('echo', cmd);
-  return 3;
-};
-
-Client.prototype.status = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('status', cmd);
-  return 3;
-};
-
-Client.prototype.linemode = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('linemode', cmd);
-  return 3;
-};
-
-Client.prototype.transmit_binary = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('transmit binary', cmd);
-  return 3;
-};
-
-Client.prototype.authentication = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('authentication', cmd);
-  return 3;
-};
-
-Client.prototype.terminal_speed = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('terminal speed', cmd);
-  return 3;
-};
-
-Client.prototype.remote_flow_control = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('remote flow control', cmd);
-  return 3;
-};
-
-Client.prototype.x_display_location = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('x display location', cmd);
-  return 3;
-};
-
-Client.prototype.suppress_go_ahead = function(cmd) {
-  if (cmd.data.length < 3) return -1;
-  cmd.data = cmd.data.slice(0, 3);
-  this.emit('suppress go ahead', cmd);
-  return 3;
-};
-
-Client.prototype.naws = function(cmd) {
-  const data = cmd.data;
-  let i = 0;
-
-  if (cmd.commandCode !== COMMANDS.SB) {
-    if (data.length < 3) return -1;
+  echo (cmd) {
+    if (cmd.data.length < 3) { return -1; }
     cmd.data = cmd.data.slice(0, 3);
+    this.emit('echo', cmd);
+    return 3;
+  }
+
+  status (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('status', cmd);
+    return 3;
+  }
+
+  linemode (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('linemode', cmd);
+    return 3;
+  }
+
+  transmit_binary (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('transmit binary', cmd);
+    return 3;
+  }
+
+  authentication (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('authentication', cmd);
+    return 3;
+  }
+
+  terminal_speed (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('terminal speed', cmd);
+    return 3;
+  }
+
+  remote_flow_control (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('remote flow control', cmd);
+    return 3;
+  }
+
+  x_display_location (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('x display location', cmd);
+    return 3;
+  }
+
+  suppress_go_ahead (cmd) {
+    if (cmd.data.length < 3) { return -1; }
+    cmd.data = cmd.data.slice(0, 3);
+    this.emit('suppress go ahead', cmd);
+    return 3;
+  }
+
+  naws (cmd) {
+    const data = cmd.data;
+    let i = 0;
+
+    if (cmd.commandCode !== COMMANDS.SB) {
+      if (data.length < 3) { return -1; }
+      cmd.data = cmd.data.slice(0, 3);
+      this.emit('window size', cmd); // compat
+      this.emit('naws', cmd);
+      return 3;
+    }
+
+    if (data.length < 9) { return -1; }
+
+    const iac1 = data.readUInt8(i);
+    i += 1;
+    const sb = data.readUInt8(i);
+    i += 1;
+    const naws = data.readUInt8(i);
+    i += 1;
+    const width = data.readUInt16BE(i);
+    i += 2;
+    const height = data.readUInt16BE(i);
+    i += 2;
+    const iac2 = data.readUInt8(i);
+    i += 1;
+    const se = data.readUInt8(i);
+    i += 1;
+
+    assert(iac1 === COMMANDS.IAC);
+    assert(sb === COMMANDS.SB);
+    assert(naws === OPTIONS.NAWS);
+    assert(iac2 === COMMANDS.IAC);
+    assert(se === COMMANDS.SE);
+
+    cmd.cols = width;
+    cmd.columns = width;
+    cmd.width = width;
+    cmd.rows = height;
+    cmd.height = height;
+
+    cmd.values = [ cmd.width, cmd.height ];
+
+    cmd.data = cmd.data.slice(0, i);
+
+    if (this.options.tty) {
+      this.columns = width;
+      this.rows = height;
+      this.emit('resize');
+    }
+
     this.emit('window size', cmd); // compat
     this.emit('naws', cmd);
-    return 3;
+
+    this.emit('size', width, height);
+
+    return i;
   }
 
-  if (data.length < 9) return -1;
-
-  const iac1 = data.readUInt8(i);
-  i += 1;
-  const sb = data.readUInt8(i);
-  i += 1;
-  const naws = data.readUInt8(i);
-  i += 1;
-  const width = data.readUInt16BE(i);
-  i += 2;
-  const height = data.readUInt16BE(i);
-  i += 2;
-  const iac2 = data.readUInt8(i);
-  i += 1;
-  const se = data.readUInt8(i);
-  i += 1;
-
-  assert(iac1 === COMMANDS.IAC);
-  assert(sb === COMMANDS.SB);
-  assert(naws === OPTIONS.NAWS);
-  assert(iac2 === COMMANDS.IAC);
-  assert(se === COMMANDS.SE);
-
-  cmd.cols = width;
-  cmd.columns = width;
-  cmd.width = width;
-  cmd.rows = height;
-  cmd.height = height;
-
-  cmd.values = [ cmd.width, cmd.height ];
-
-  cmd.data = cmd.data.slice(0, i);
-
-  if (this.options.tty) {
-    this.columns = width;
-    this.rows = height;
-    this.emit('resize');
+  window_size (cmd) {
+    return this.naws(cmd);
   }
 
-  this.emit('window size', cmd); // compat
-  this.emit('naws', cmd);
+  new_environ (cmd) {
+    const data = cmd.data;
+    let i = 0;
 
-  this.emit('size', width, height);
+    if (cmd.commandCode !== COMMANDS.SB) {
+      if (data.length < 3) { return -1; }
+      cmd.data = cmd.data.slice(0, 3);
+      this.emit('environment variables', cmd); // compat
+      this.emit('new environ', cmd);
+      return 3;
+    }
 
-  return i;
-};
+    if (data.length < 10) { return -1; }
 
-// compat
-Client.prototype.window_size = Client.prototype.naws;
+    const iac1 = data.readUInt8(i);
+    i += 1;
+    const sb = data.readUInt8(i);
+    i += 1;
+    const newenv = data.readUInt8(i);
+    i += 1;
+    const info = data.readUInt8(i);
+    i += 1;
+    const variable = data.readUInt8(i);
+    i += 1;
 
-Client.prototype.new_environ = function(cmd) {
-  const data = cmd.data;
-  let i = 0;
+    let name;
+    for (let s = i; i < data.length; i++) {
+      if (data[i] === SUB.VALUE) {
+        name = data.toString('ascii', s, i);
+        i++;
+        break;
+      }
+    }
 
-  if (cmd.commandCode !== COMMANDS.SB) {
-    if (data.length < 3) return -1;
-    cmd.data = cmd.data.slice(0, 3);
+    let value;
+    for (let s = i; i < data.length; i++) {
+      if (data[i] === COMMANDS.IAC) {
+        value = data.toString('ascii', s, i);
+        break;
+      }
+    }
+
+    const iac2 = data.readUInt8(i);
+    i += 1;
+    const se = data.readUInt8(i);
+    i += 1;
+
+    assert(iac1 === COMMANDS.IAC);
+    assert(sb === COMMANDS.SB);
+    assert(newenv === OPTIONS.NEW_ENVIRON);
+    assert(info === SUB.INFO);
+    assert(variable === SUB.VARIABLE || variable === SUB.USER_VARIABLE);
+    assert(name.length > 0);
+    assert(value.length > 0);
+    assert(iac2 === COMMANDS.IAC);
+    assert(se === COMMANDS.SE);
+
+    cmd.name = name;
+    cmd.value = value;
+    cmd.type = variable === SUB.VARIABLE ?
+      'system' :
+      'user';
+
+    // Always uppercase for some reason.
+    if (cmd.name === 'TERM') {
+      cmd.value = cmd.value.toLowerCase();
+      this.terminal = cmd.value;
+      this.emit('term', cmd.value);
+    }
+
+    cmd.values = [ cmd.name, cmd.value, cmd.type ];
+
+    cmd.data = cmd.data.slice(0, i);
+
+    this.env[cmd.name] = cmd.value;
+
     this.emit('environment variables', cmd); // compat
     this.emit('new environ', cmd);
-    return 3;
+
+    this.emit('env', cmd.name, cmd.value, cmd.type);
+
+    return i;
   }
 
-  if (data.length < 10) return -1;
+  environment_variables (cmd) {
+    return this.new_environ(cmd);
+  }
 
-  const iac1 = data.readUInt8(i);
-  i += 1;
-  const sb = data.readUInt8(i);
-  i += 1;
-  const newenv = data.readUInt8(i);
-  i += 1;
-  const info = data.readUInt8(i);
-  i += 1;
-  const variable = data.readUInt8(i);
-  i += 1;
+  terminal_type (cmd) {
+    const data = cmd.data;
+    let i = 0;
 
-  let name;
-  for (var s = i; i < data.length; i++) {
-    if (data[i] === SUB.VALUE) {
-      name = data.toString('ascii', s, i);
-      i++;
-      break;
+    if (cmd.commandCode !== COMMANDS.SB) {
+      if (data.length < 3) { return -1; }
+      cmd.data = cmd.data.slice(0, 3);
+      this.emit('terminal type', cmd);
+      if (cmd.commandCode === COMMANDS.WILL) {
+        this.output.write(new Buffer([
+          COMMANDS.IAC,
+          COMMANDS.SB,
+          OPTIONS.TERMINAL_TYPE,
+          SUB.SEND,
+          COMMANDS.IAC,
+          COMMANDS.SE,
+        ]));
+      }
+      return 3;
     }
-  }
 
-  let value;
-  for (var s = i; i < data.length; i++) {
-    if (data[i] === COMMANDS.IAC) {
-      value = data.toString('ascii', s, i);
-      break;
+    if (data.length < 7) { return -1; }
+
+    const iac1 = data.readUInt8(i);
+    i += 1;
+    const sb = data.readUInt8(i);
+    i += 1;
+    const termtype = data.readUInt8(i);
+    i += 1;
+    const is = data.readUInt8(i);
+    i += 1;
+
+    let name;
+    for (let s = i; i < data.length; i++) {
+      if (data[i] === COMMANDS.IAC) {
+        name = data.toString('ascii', s, i);
+        break;
+      }
     }
-  }
 
-  const iac2 = data.readUInt8(i);
-  i += 1;
-  const se = data.readUInt8(i);
-  i += 1;
+    const iac2 = data.readUInt8(i);
+    i += 1;
+    const se = data.readUInt8(i);
+    i += 1;
 
-  assert(iac1 === COMMANDS.IAC);
-  assert(sb === COMMANDS.SB);
-  assert(newenv === OPTIONS.NEW_ENVIRON);
-  assert(info === SUB.INFO);
-  assert(variable === SUB.VARIABLE || variable === SUB.USER_VARIABLE);
-  assert(name.length > 0);
-  assert(value.length > 0);
-  assert(iac2 === COMMANDS.IAC);
-  assert(se === COMMANDS.SE);
+    assert(iac1 === COMMANDS.IAC);
+    assert(sb === COMMANDS.SB);
+    assert(termtype === OPTIONS.TERMINAL_TYPE);
+    assert(is === SUB.IS);
+    assert(name.length > 0);
+    assert(iac2 === COMMANDS.IAC);
+    assert(se === COMMANDS.SE);
 
-  cmd.name = name;
-  cmd.value = value;
-  cmd.type = variable === SUB.VARIABLE ?
-    'system' :
-    'user';
+    // Always uppercase for some reason.
+    cmd.name = name.toLowerCase();
 
-  // Always uppercase for some reason.
-  if (cmd.name === 'TERM') {
-    cmd.value = cmd.value.toLowerCase();
-    this.terminal = cmd.value;
-    this.emit('term', cmd.value);
-  }
+    cmd.values = [ cmd.name ];
 
-  cmd.values = [ cmd.name, cmd.value, cmd.type ];
+    cmd.data = cmd.data.slice(0, i);
 
-  cmd.data = cmd.data.slice(0, i);
+    this.terminal = cmd.name;
 
-  this.env[cmd.name] = cmd.value;
-
-  this.emit('environment variables', cmd); // compat
-  this.emit('new environ', cmd);
-
-  this.emit('env', cmd.name, cmd.value, cmd.type);
-
-  return i;
-};
-
-// compat
-Client.prototype.environment_variables = Client.prototype.new_environ;
-
-Client.prototype.terminal_type = function(cmd) {
-  const data = cmd.data;
-  let i = 0;
-
-  if (cmd.commandCode !== COMMANDS.SB) {
-    if (data.length < 3) return -1;
-    cmd.data = cmd.data.slice(0, 3);
     this.emit('terminal type', cmd);
-    if (cmd.commandCode === COMMANDS.WILL) {
-      this.output.write(new Buffer([
-        COMMANDS.IAC,
-        COMMANDS.SB,
-        OPTIONS.TERMINAL_TYPE,
-        SUB.SEND,
-        COMMANDS.IAC,
-        COMMANDS.SE,
-      ]));
-    }
-    return 3;
+
+    this.emit('term', cmd.name);
+
+    return i;
   }
 
-  if (data.length < 7) return -1;
-
-  const iac1 = data.readUInt8(i);
-  i += 1;
-  const sb = data.readUInt8(i);
-  i += 1;
-  const termtype = data.readUInt8(i);
-  i += 1;
-  const is = data.readUInt8(i);
-  i += 1;
-
-  let name;
-  for (let s = i; i < data.length; i++) {
-    if (data[i] === COMMANDS.IAC) {
-      name = data.toString('ascii', s, i);
-      break;
+  _setRawMode (mode) {
+    this.isRaw = mode;
+    if (!this.writable) { return; }
+    if (mode) {
+      this.debug('switching to raw:');
+      this.do.suppress_go_ahead();
+      this.will.suppress_go_ahead();
+      this.will.echo();
+      this.debug('switched to raw');
+    } else {
+      this.debug('switching to cooked:');
+      this.dont.suppress_go_ahead();
+      this.wont.suppress_go_ahead();
+      this.wont.echo();
+      this.debug('switched to cooked');
     }
   }
 
-  const iac2 = data.readUInt8(i);
-  i += 1;
-  const se = data.readUInt8(i);
-  i += 1;
-
-  assert(iac1 === COMMANDS.IAC);
-  assert(sb === COMMANDS.SB);
-  assert(termtype === OPTIONS.TERMINAL_TYPE);
-  assert(is === SUB.IS);
-  assert(name.length > 0);
-  assert(iac2 === COMMANDS.IAC);
-  assert(se === COMMANDS.SE);
-
-  // Always uppercase for some reason.
-  cmd.name = name.toLowerCase();
-
-  cmd.values = [ cmd.name ];
-
-  cmd.data = cmd.data.slice(0, i);
-
-  this.terminal = cmd.name;
-
-  this.emit('terminal type', cmd);
-
-  this.emit('term', cmd.name);
-
-  return i;
-};
-
-Client.prototype._setRawMode = function(mode) {
-  this.isRaw = mode;
-  if (!this.writable) return;
-  if (mode) {
-    this.debug('switching to raw:');
-    this.do.suppress_go_ahead();
-    this.will.suppress_go_ahead();
-    this.will.echo();
-    this.debug('switched to raw');
-  } else {
-    this.debug('switching to cooked:');
-    this.dont.suppress_go_ahead();
-    this.wont.suppress_go_ahead();
-    this.wont.echo();
-    this.debug('switched to cooked');
-  }
-};
-
-Client.prototype.__defineGetter__('readable', function() {
-  return this.input.readable;
-});
-
-Client.prototype.__defineGetter__('writable', function() {
-  return this.output.writable;
-});
-
-Client.prototype.__defineGetter__('destroyed', function() {
-  return this.output.destroyed;
-});
-
-Client.prototype.pause = function() {
-  return this.input.pause.apply(this.output, arguments);
-};
-
-Client.prototype.resume = function() {
-  return this.input.resume.apply(this.output, arguments);
-};
-
-Client.prototype.write = function(b) {
-  if (this.options.convertLF) {
-    arguments[0] = arguments[0].toString('utf8').replace(/\r?\n/g, '\r\n');
-  }
-  return this.output.write.apply(this.output, arguments);
-};
-
-Client.prototype.end = function() {
-  return this.output.end.apply(this.output, arguments);
-};
-
-Client.prototype.destroy = function() {
-  return this.output.destroy.apply(this.output, arguments);
-};
-
-Client.prototype.destroySoon = function() {
-  return this.output.destroySoon.apply(this.output, arguments);
-};
-
-/**
- * Server
- */
-
-function Server (options, callback) {
-  const self = this;
-
-  if (!(this instanceof Server)) {
-    return new Server(options, callback);
+  get readbale () {
+    return this.input.readable;
   }
 
-  if (typeof options !== 'object') {
-    callback = options;
-    options = null;
+  get writable () {
+    return this.output.writable;
   }
 
-  options = options || {};
+  get destroyed () {
+    return this.output.destroyed;
+  }
 
-  EventEmitter.call(this);
+  pause (...args) {
+    return this.input.pause(...args);
+  }
 
-  this.server = net.createServer((socket) => {
-    const client = new Client(merge({}, options, {
-      input: socket,
-      output: socket,
-      server: self,
-    }));
-    self.emit('connection', client);
-    self.emit('client', client); // compat
-    if (callback) {
-      callback(client);
+  resume (...args) {
+    return this.input.resume(...args);
+  }
+
+  write (...args) {
+    if (this.options.convertLF) {
+      args[0] = args[0].toString('utf8').replace(/\r?\n/g, '\r\n');
     }
-  });
+    return this.output.write(...args);
+  }
 
-  [ 'error', 'listening', 'close' ].forEach((name) => {
-    self.server.on(name, function() {
-      const args = Array.prototype.slice.call(arguments);
-      self.emit.apply(self, [ name ].concat(args));
+  end (...args) {
+    return this.output.end(...args);
+  }
+
+  destroy (...args) {
+    return this.output.destroy(...args);
+  }
+
+  destroySoon (...args) {
+    return this.output.destroySoon.apply(...args);
+  }
+}
+
+//////////
+// Server
+
+class Server extends EventEmitter {
+  constructor (options, callback) {
+    super();
+
+    if (!(this instanceof Server)) {
+      return new Server(options, callback);
+    }
+
+    if (typeof options !== 'object') {
+      callback = options;
+      options = null;
+    }
+
+    options = options || {};
+
+    this.server = net.createServer((socket) => {
+      const client = new Client(Object.assign({}, options, {
+        input: socket,
+        output: socket,
+        server: this,
+      }));
+
+      this.emit('connection', client);
+      this.emit('client', client); // compat
+
+      if (callback) {
+        return callback(client);
+      }
+      return client;
     });
-  });
 
-  return this;
-}
+    for (const name of [ 'error', 'listening', 'close' ]) {
+      this.server.on(name, (...args) => {
+        this.emit(name, ...args);
+      });
+    }
 
-Server.prototype.__proto__ = EventEmitter.prototype;
-
-Object.keys(net.Server.prototype).forEach((key) => {
-  const value = net.Server.prototype[key];
-  if (typeof value !== 'function') return;
-  Server.prototype[key] = function() {
-    return this.server[key].apply(this.server, arguments);
-  };
-}, this);
-
-/**
- * Telnet
- */
-
-function Telnet (options) {
-  if (options && (options.input || options.addListener)) {
-    return new Client(arguments[0], arguments[1], arguments[2]);
+    for (const key in this.server) {
+      const value = this.server[key];
+      if (typeof value === 'function') {
+        this[key] = (...args) => this.server[key](...args);
+      }
+    }
   }
-  return new Server(arguments[0], arguments[1]);
 }
 
-/**
- * Helpers
- */
+//////////
 
-function merge (target) {
-  const objects = Array.prototype.slice.call(arguments, 1);
-  objects.forEach((obj) => {
-    Object.keys(obj).forEach((key) => {
-      target[key] = obj[key];
-    });
-  });
-  return target;
-}
-
-/**
- * Expose
- */
-
-exports = Telnet;
-exports.Client = Client;
-exports.Server = Server;
-exports.createClient = Client;
-exports.createServer = Server;
-
-exports.COMMANDS = COMMANDS;
-exports.COMMAND_NAMES = COMMAND_NAMES;
-exports.OPTIONS = OPTIONS;
-exports.OPTION_NAMES = OPTION_NAMES;
-exports.SUB = SUB;
-
-module.exports = exports;
+module.exports = {
+  Client,
+  Server,
+};
